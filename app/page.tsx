@@ -211,24 +211,46 @@ function EventInfoAccordion() {
         <div className="px-5 pb-5 pt-2 text-sm text-neutral-700 space-y-4 border-t border-neutral-200">
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">Tanggal & Waktu</h3>
-            <p className="leading-relaxed">(Isi tanggal dan jam acara di sini, misal: 24 September 2025, 09:00–13:00 WIB)</p>
+            <p className="leading-relaxed">Sales Training: 28 Agustus 2025, 12:00–15:00 WIB</p>
+            <p className="leading-relaxed">Dealer Gathering: 28 Agustus 2025, 17:00–21:00 WIB</p>
           </section>
           <section>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">Lokasi</h3>
-            <p className="leading-relaxed">(Isi nama venue / hotel / alamat singkat di sini)</p>
-          </section>
-            <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">Agenda Utama</h3>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Pembukaan & Sambutan</li>
-              <li>Presentasi Produk / Solusi</li>
-              <li>Sesi Q&A</li>
-              <li>Networking</li>
-            </ul>
+            <p className="leading-relaxed font-bold">Novotel Palembang Hotel & Residence</p>
+            <p className="leading-relaxed">Jl. R. Sukamto No.8A, 8 Ilir, Kec. Ilir Tim. II, Kota Palembang</p>
+            <a 
+              href="https://maps.app.goo.gl/URWoxFAJFdEQ3GGH9" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-asus-primary hover:text-asus-primary/80 font-medium transition-colors"
+            >
+              Buka Maps
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
           </section>
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">Kontak Panitia</h3>
-            <p className="leading-relaxed">(Nama PIC) – (No. WhatsApp) / (Email)</p>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1">Kontak Info</h3>
+            <p className="leading-relaxed">
+              Rudy – WA{' '}
+              <a 
+              href="https://wa.me/6282118055558" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-asus-primary hover:text-asus-primary/80 font-medium transition-colors"
+              >
+              62 821-1805-5558
+              </a>
+              {' '}(
+              <a 
+              href="mailto:Rudy_Nurifansyah1@asus.com"
+              className="text-asus-primary hover:text-asus-primary/80 font-medium transition-colors"
+              >
+              Rudy_Nurifansyah1@asus.com
+              </a>
+              )
+            </p>
           </section>
           <p className="text-[11px] text-neutral-500">Silakan sesuaikan informasi ini sebelum dibagikan ke peserta.</p>
         </div>
