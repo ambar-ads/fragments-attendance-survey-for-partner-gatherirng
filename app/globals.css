@@ -48,6 +48,39 @@ body {
   pointer-events: none;
 }
 
+/* Custom checkbox styling */
+input[type="checkbox"] {
+  accent-color: var(--asus-primary);
+}
+
+/* Custom form table styling */
+.form-table {
+  border-collapse: collapse;
+}
+
+.form-table th,
+.form-table td {
+  border: 1px solid #d1d5db;
+}
+
+.form-table input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 66, 165, 0.25);
+}
+
+/* Responsive table wrapper */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .table-wrapper {
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+  }
+}
+
 .shadow-kahoot {
   box-shadow: 0 10px 25px -5px rgba(123,31,162,0.35), 0 8px 10px -6px rgba(99,102,241,0.4);
 }

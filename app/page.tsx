@@ -84,6 +84,34 @@ export default function Home() {
                 </button>
                 <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">Data yang Anda kirimkan akan digunakan secara internal oleh ASUS untuk perencanaan acara dan tidak akan dibagikan kepada pihak ketiga.</p>
               </div>
+              
+              {/* ACP Registration Banner */}
+              <div className="mt-6 p-4 bg-gradient-to-r from-asus-primary/5 to-asus-accent/5 border border-asus-primary/20 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <svg className="h-5 w-5 text-asus-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-asus-primary mb-1">
+                      Bergabung dengan ASUS Commercial Partner
+                    </h3>
+                    <p className="text-sm text-neutral-600 mb-3">
+                      Tertarik untuk menjadi partner resmi ASUS? Daftarkan perusahaan Anda untuk bergabung dengan program ASUS Commercial Partner dan dapatkan benefit menarik.
+                    </p>
+                    <a 
+                      href="/acp-registration"
+                      className="inline-flex items-center gap-2 text-sm font-medium text-asus-primary hover:text-asus-primary/80 transition-colors"
+                    >
+                      Daftar ACP Sekarang
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
           </form>
         </div>
@@ -252,7 +280,6 @@ function EventInfoAccordion() {
               )
             </p>
           </section>
-          <p className="text-[11px] text-neutral-500">Silakan sesuaikan informasi ini sebelum dibagikan ke peserta.</p>
         </div>
       )}
     </div>

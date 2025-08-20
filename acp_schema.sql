@@ -1,28 +1,8 @@
--- Tabel RSVP untuk acara
--- Jalankan di SQL editor Supabase Anda
-create table if not exists public.event_rsvps (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  phone text not null,
-  company text not null,
-  attending boolean not null,
-  created_at timestamptz not null default now()
-);
-
--- (Opsional) Index untuk pencarian / laporan
-create index if not exists event_rsvps_created_at_idx on public.event_rsvps(created_at desc);
-create index if not exists event_rsvps_attending_idx on public.event_rsvps(attending);
-
--- (Opsional) Policy RLS jika ingin mengaktifkan Row Level Security
--- alter table public.event_rsvps enable row level security;
--- create policy "Allow inserts" on public.event_rsvps for insert with check (true);
-
--- ========================================
--- ACP Registration Schema
--- ========================================
+-- ACP Registration Schema for Supabase
+-- Jalankan script ini di Supabase SQL Editor
 
 -- Tabel utama untuk pendaftaran ACP
-CREATE TABLE IF NOT EXISTS public.acp_registrations (
+CREATE TABLE acp_registrations (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     acp_name VARCHAR(255) NOT NULL,
     acp_address TEXT NOT NULL,
@@ -41,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.acp_registrations (
 );
 
 -- Tabel untuk informasi kontak
-CREATE TABLE IF NOT EXISTS public.acp_contacts (
+CREATE TABLE acp_contacts (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     acp_registration_id UUID NOT NULL REFERENCES acp_registrations(id) ON DELETE CASCADE,
     contact_type VARCHAR(50) NOT NULL, -- 'Owner', 'Contact 1', 'Contact 2', 'Contact 3'
@@ -52,11 +32,11 @@ CREATE TABLE IF NOT EXISTS public.acp_contacts (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Index untuk performa query ACP
-CREATE INDEX IF NOT EXISTS idx_acp_registrations_created_at ON acp_registrations(created_at);
-CREATE INDEX IF NOT EXISTS idx_acp_registrations_acp_name ON acp_registrations(acp_name);
-CREATE INDEX IF NOT EXISTS idx_acp_contacts_registration_id ON acp_contacts(acp_registration_id);
-CREATE INDEX IF NOT EXISTS idx_acp_contacts_contact_type ON acp_contacts(contact_type);
+-- Index untuk performa query
+CREATE INDEX idx_acp_registrations_created_at ON acp_registrations(created_at);
+CREATE INDEX idx_acp_registrations_acp_name ON acp_registrations(acp_name);
+CREATE INDEX idx_acp_contacts_registration_id ON acp_contacts(acp_registration_id);
+CREATE INDEX idx_acp_contacts_contact_type ON acp_contacts(contact_type);
 
 -- Trigger untuk update timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -67,42 +47,51 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Hapus trigger jika sudah ada
-DROP TRIGGER IF EXISTS update_acp_registrations_updated_at ON acp_registrations;
-
 CREATE TRIGGER update_acp_registrations_updated_at 
     BEFORE UPDATE ON acp_registrations 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
--- RLS (Row Level Security) policies untuk ACP
+-- RLS (Row Level Security) policies
 ALTER TABLE acp_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE acp_contacts ENABLE ROW LEVEL SECURITY;
 
 -- Policy untuk insert (public bisa insert)
-DROP POLICY IF EXISTS "Allow public insert" ON acp_registrations;
 CREATE POLICY "Allow public insert" ON acp_registrations
     FOR INSERT TO public
     WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Allow public insert contacts" ON acp_contacts;
-CREATE POLICY "Allow public insert contacts" ON acp_contacts
+CREATE POLICY "Allow public insert" ON acp_contacts
     FOR INSERT TO public
     WITH CHECK (true);
 
 -- Policy untuk select (hanya authenticated users yang bisa read)
-DROP POLICY IF EXISTS "Allow authenticated select" ON acp_registrations;
 CREATE POLICY "Allow authenticated select" ON acp_registrations
     FOR SELECT TO authenticated
     USING (true);
 
-DROP POLICY IF EXISTS "Allow authenticated select contacts" ON acp_contacts;
-CREATE POLICY "Allow authenticated select contacts" ON acp_contacts
+CREATE POLICY "Allow authenticated select" ON acp_contacts
     FOR SELECT TO authenticated
     USING (true);
 
+-- Policy untuk update/delete (hanya authenticated users)
+CREATE POLICY "Allow authenticated update" ON acp_registrations
+    FOR UPDATE TO authenticated
+    USING (true);
+
+CREATE POLICY "Allow authenticated delete" ON acp_registrations
+    FOR DELETE TO authenticated
+    USING (true);
+
+CREATE POLICY "Allow authenticated update" ON acp_contacts
+    FOR UPDATE TO authenticated
+    USING (true);
+
+CREATE POLICY "Allow authenticated delete" ON acp_contacts
+    FOR DELETE TO authenticated
+    USING (true);
+
 -- View untuk mempermudah query data lengkap
-DROP VIEW IF EXISTS acp_registrations_with_contacts;
 CREATE VIEW acp_registrations_with_contacts AS
 SELECT 
     r.*,
@@ -137,3 +126,24 @@ GRANT SELECT ON acp_registrations_with_contacts TO authenticated;
 COMMENT ON TABLE acp_registrations IS 'Tabel untuk menyimpan data pendaftaran ASUS Commercial Partner';
 COMMENT ON TABLE acp_contacts IS 'Tabel untuk menyimpan informasi kontak dari setiap pendaftaran ACP';
 COMMENT ON VIEW acp_registrations_with_contacts IS 'View yang menggabungkan data registrasi dengan informasi kontak';
+
+-- Sample query untuk testing (tidak perlu dijalankan, hanya untuk referensi)
+/*
+-- Contoh query untuk melihat semua pendaftaran
+SELECT * FROM acp_registrations_with_contacts;
+
+-- Contoh query untuk melihat pendaftaran tertentu
+SELECT * FROM acp_registrations_with_contacts WHERE id = 'your-uuid-here';
+
+-- Contoh query untuk mencari berdasarkan nama perusahaan
+SELECT * FROM acp_registrations_with_contacts WHERE acp_name ILIKE '%keyword%';
+
+-- Contoh query untuk statistik
+SELECT 
+    COUNT(*) as total_registrations,
+    COUNT(CASE WHEN agreement = true THEN 1 END) as agreed_registrations,
+    DATE(created_at) as registration_date
+FROM acp_registrations 
+GROUP BY DATE(created_at) 
+ORDER BY registration_date DESC;
+*/
