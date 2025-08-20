@@ -1,9 +1,0 @@
-{
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "/asus/asusccgatheringsurvey",
-      "permanent": true
-    }
-  ]
-}
