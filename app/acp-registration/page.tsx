@@ -45,6 +45,15 @@ const initialContactInfo: ContactInfo = {
 };
 
 const distributorOptions = [
+  "PT. SYNNEX METRODATA INDONESIA",
+  "PT. DATASCRIP",
+  "PT. ADAKOM INTERNATIONAL TECHNOLOGY",
+  "PT. ASTRINDO SENAYASA",
+  "PT. TECH DATA ADVANCED SOLUTION INDONESIA",
+  "PT. INGRAM MICRO INDONESIA"
+];
+
+const masterDealerOptions = [
   "Agres Info Teknologi, PT",
   "CV. Vicmic Indonesia - Jakarta",
   "PT. Macro Multimedia Computama",
@@ -213,8 +222,8 @@ export default function ACPRegistration() {
       return;
     }
 
-    if (form.claimCreditNoteTo === 'distributor' && !form.distributorName) {
-      setError('Mohon pilih nama Distributor untuk klaim Credit Note.');
+    if (form.claimCreditNoteTo === 'distributor' && !form.distributorName.trim()) {
+      setError('Mohon isi nama Distributor untuk klaim Credit Note.');
       return;
     }
 
@@ -871,33 +880,33 @@ export default function ACPRegistration() {
                     </label>
                   </div>
 
-                  {/* Distributor searchable dropdown */}
+                  {/* Distributor text input */}
                   {form.claimCreditNoteTo === 'distributor' && (
-                    <SearchableDistributorDropdown
-                      value={form.distributorName}
-                      onChange={(value) => setForm(prev => ({ ...prev, distributorName: value }))}
-                      options={distributorOptions}
-                      placeholder="Cari atau pilih distributor..."
-                      required
-                    />
-                  )}
-
-                  {/* Master Dealer text input */}
-                  {form.claimCreditNoteTo === 'master_dealer' && (
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-neutral-700">
-                        Nama Master Dealer
+                        Distributor Name
                         <span className="text-red-600" aria-hidden> *</span>
                       </label>
                       <input
                         type="text"
-                        value={form.masterDealerName}
-                        onChange={(e) => setForm(prev => ({ ...prev, masterDealerName: e.target.value }))}
+                        value={form.distributorName}
+                        onChange={(e) => setForm(prev => ({ ...prev, distributorName: e.target.value }))}
                         className="block w-full rounded-md border border-neutral-300 bg-white px-4 py-2.5 text-sm text-neutral-800 shadow-inner focus:border-asus-primary focus:ring-4 focus:ring-asus-primary/25 outline-none transition"
-                        placeholder="Masukkan nama Master Dealer"
+                        placeholder="Masukkan nama Distributor"
                         required
                       />
                     </div>
+                  )}
+
+                  {/* Master Dealer input with suggestions */}
+                  {form.claimCreditNoteTo === 'master_dealer' && (
+                    <MasterDealerInputWithSuggestions
+                      value={form.masterDealerName}
+                      onChange={(value) => setForm(prev => ({ ...prev, masterDealerName: value }))}
+                      suggestions={masterDealerOptions}
+                      placeholder="Masukkan nama Master Dealer..."
+                      required
+                    />
                   )}
                 </div>
               </section>
@@ -997,14 +1006,16 @@ interface SearchableDistributorDropdownProps {
   options: string[];
   placeholder?: string;
   required?: boolean;
+  label?: string;
 }
 
 function SearchableDistributorDropdown({ 
   value, 
   onChange, 
   options, 
-  placeholder = "Cari atau pilih distributor...",
-  required = false 
+  placeholder = "Cari atau pilih...",
+  required = false,
+  label = "Pilih Option"
 }: SearchableDistributorDropdownProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -1077,7 +1088,7 @@ function SearchableDistributorDropdown({
   return (
     <div className="space-y-1.5">
       <label className="text-sm font-medium text-neutral-700">
-        Pilih Distributor
+        {label}
         {required && (
           <>
             <span className="text-red-600" aria-hidden> *</span>
@@ -1128,12 +1139,141 @@ function SearchableDistributorDropdown({
               ))
             ) : (
               <div className="px-4 py-2 text-sm text-neutral-500">
-                Tidak ada distributor yang cocok dengan "{searchTerm}"
+                Tidak ada opsi yang cocok dengan "{searchTerm}"
               </div>
             )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface MasterDealerInputWithSuggestionsProps {
+  value: string;
+  onChange: (value: string) => void;
+  suggestions: string[];
+  placeholder?: string;
+  required?: boolean;
+}
+
+function MasterDealerInputWithSuggestions({ 
+  value, 
+  onChange, 
+  suggestions, 
+  placeholder = "Masukkan nama Master Dealer...",
+  required = false 
+}: MasterDealerInputWithSuggestionsProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Filter suggestions based on input value
+  useEffect(() => {
+    if (value.length > 0) {
+      const filtered = suggestions.filter(suggestion =>
+        suggestion.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredSuggestions(filtered);
+    } else {
+      setFilteredSuggestions([]);
+    }
+  }, [value, suggestions]);
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    onChange(newValue);
+    
+    // Show suggestions if input has content and there are filtered suggestions
+    if (newValue.length > 0 && filteredSuggestions.length > 0) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
+
+  const handleSuggestionSelect = (suggestion: string) => {
+    onChange(suggestion);
+    setIsOpen(false);
+    inputRef.current?.blur();
+  };
+
+  const handleInputFocus = () => {
+    // Show suggestions if there's input and suggestions available
+    if (value.length > 0 && filteredSuggestions.length > 0) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleInputBlur = () => {
+    // Small delay to allow suggestion selection
+    setTimeout(() => {
+      setIsOpen(false);
+    }, 150);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium text-neutral-700">
+        Master Dealer Name
+        {required && (
+          <>
+            <span className="text-red-600" aria-hidden> *</span>
+            <span className="sr-only">(wajib)</span>
+          </>
+        )}
+      </label>
+      
+      <div className="relative" ref={dropdownRef}>
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          placeholder={placeholder}
+          required={required}
+          className="block w-full rounded-md border border-neutral-300 bg-white px-4 py-2.5 text-sm text-neutral-800 shadow-inner focus:border-asus-primary focus:ring-4 focus:ring-asus-primary/25 outline-none transition"
+          autoComplete="off"
+        />
+        
+        {/* Suggestions dropdown */}
+        {isOpen && filteredSuggestions.length > 0 && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-neutral-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+            {filteredSuggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => handleSuggestionSelect(suggestion)}
+                className="w-full text-left px-4 py-2 text-sm text-neutral-800 hover:bg-asus-primary/10 focus:bg-asus-primary/10 focus:outline-none transition"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {/* Helper text */}
+      <p className="text-xs text-neutral-500">
+        Ketik untuk mencari dari daftar atau masukkan nama master dealer lainnya
+      </p>
     </div>
   );
 }
