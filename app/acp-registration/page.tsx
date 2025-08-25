@@ -1,7 +1,9 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { generatePDF, uploadPDFToStorage, FormData as PDFFormData } from '../../lib/pdfGenerator';
+import { generatePDFFallback, uploadPDFToStorage as uploadPDFToStorageFallback, FormData as PDFFormDataFallback } from '../../lib/pdfGeneratorFallback';
+import { generateSimplePDF, uploadPDFToStorage as uploadPDFToStorageSimple, FormData as PDFFormDataSimple } from '../../lib/pdfGeneratorSimple';
 import { uploadFileToStorage } from '../../lib/supabaseStorage';
 
 interface ContactInfo {
@@ -28,6 +30,9 @@ interface ACPFormState {
   pkp: string;
   contacts: ContactInfo[];
   agreement: boolean;
+  claimCreditNoteTo: 'distributor' | 'master_dealer' | '';
+  distributorName: string;
+  masterDealerName: string;
   submissionId?: string; // ID dari database setelah submit berhasil
 }
 
@@ -38,6 +43,93 @@ const initialContactInfo: ContactInfo = {
   email: '',
   whatsappNo: ''
 };
+
+const distributorOptions = [
+  "Agres Info Teknologi, PT",
+  "CV. Vicmic Indonesia - Jakarta",
+  "PT. Macro Multimedia Computama",
+  "Elmi Computer",
+  "Mitra Surya",
+  "PC Master Computer",
+  "Aneka Cemerlang Komputer",
+  "Maxima Surya Abadi",
+  "Smartindo Integrasi System. PT",
+  "Tunggal Opti Persada, CV",
+  "Infokom Putra Kencana, PT",
+  "Dayamega Pratama, PT",
+  "Mikrotek Komputindo , PT",
+  "Primajaya Multi Technology, PT",
+  "Bali Satu Computer, PT",
+  "Visi Inti Sinergi",
+  "PT. Asiamas Teknologi Grosiria",
+  "Logikreasi Utama, PT",
+  "Digital Komputindo Persada, PT",
+  "Computa, CV",
+  "Grace Solusindotama Perkasa",
+  "Multikom",
+  "Aneka Niaga Global, PT",
+  "Eleven Computer",
+  "Semangat Berkat Jaya, PT",
+  "OCTOPUS DISTRINDO, PT",
+  "Infonet Mitra Sejati, PT",
+  "Multi Data Palembang, PT",
+  "Venes Jaya, CV",
+  "PT. DWIWIRA PUTRADINAMIKA",
+  "PT. KARYA MURA NIAGA",
+  "DBKLIK, CV",
+  "Megacom",
+  "Tiga Dimensi Data, PT",
+  "XDC Indonesia, PT",
+  "Angkasa cerah Jaya, PT",
+  "Sumbermulia Hasilguna, PT - IT Galery",
+  "Platinum / Next Solution",
+  "PT. Nusajaya Sejahtera Computer",
+  "SENTRAL Komputer - JakTim",
+  "Mediatouch Computer",
+  "PT Columbindo Citra Indah - Jakarta",
+  "Enter Komputer",
+  "Podomoro Notebook",
+  "El's Computer",
+  "PT. Tri Inovasi",
+  "CV. Kurnia Digital Solusindo",
+  "Inti Sanho Utama Teknologi",
+  "SIGMA COMPUTER - Jkt",
+  "PT Adhimukti Karya Bersama",
+  "PT. Utama Jaya Komputer",
+  "PT. KRISTAL KOMPUTERINDO PERKASA",
+  "CV.  Annisa Computer / Anandam Computer / PT. SUPER GAMING INDONESIA",
+  "PT. Bintang Timor Sukses Sejahtera",
+  "CV. KANA - Yogya",
+  "Matrix Computer - Bali",
+  "CV. Hypercom - Batam",
+  "CV. GLOBAL MEDIA TEKNIK / CV.GLOBAL TEKNIK - NTT",
+  "CV. BITCOM NUSANTARA ELEKTRONIK / CV. SEJAHTERA IT SOLUTION",
+  "Sinar Jaya Computer - Kudus",
+  "Sakura",
+  "CN Computer - Bandung / Cv Pilar Abadi",
+  "PT Masterdata Bali",
+  "Sg Computer",
+  "Calvin Computer",
+  "CV DUTA BINTANG UTAMA",
+  "Proshop Timur Raya",
+  "CV.  Sinar Samudra",
+  "PT. TIPA ARENA CITRA - Jakarta",
+  "Liberty Computer",
+  "PT PROMEDIA SUKSES BERSAMA",
+  "Bali IT Solusi",
+  "PT. CPUCOM DATA SYSTEM",
+  "CV. Mega Komputama Perkasa",
+  "Tekno Computer - PKB",
+  "Sentra Computer - Bandar Lampung",
+  "V-TECH COMPUTER - Jambi",
+  "PT. HEDIMAN KHARISMA MANDIRI",
+  "PT DISTRIBUTOR GADGET INDONESIA",
+  "CV. Delta Tekonologi corporindo",
+  "Surya Cakra Infokom",
+  "Sentracom - Banyuwangi",
+  "Metro Computer - Lampung",
+  "RAHARJA NoteBook - KEDIRI"
+];
 
 export default function ACPRegistration() {
   const [form, setForm] = useState<ACPFormState>({
@@ -61,6 +153,9 @@ export default function ACPRegistration() {
       { ...initialContactInfo, type: 'Contact 3' }
     ],
     agreement: false,
+    claimCreditNoteTo: '',
+    distributorName: '',
+    masterDealerName: '',
     submissionId: undefined
   });
 
@@ -69,6 +164,9 @@ export default function ACPRegistration() {
   const [error, setError] = useState<string | null>(null);
   const [showExampleModal, setShowExampleModal] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [simplePdfLoading, setSimplePdfLoading] = useState(false);
+  const [distributorSearch, setDistributorSearch] = useState('');
+  const [showDistributorDropdown, setShowDistributorDropdown] = useState(false);
 
   const handleInputChange = (field: keyof ACPFormState, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -106,6 +204,22 @@ export default function ACPRegistration() {
     const ownerContact = form.contacts[0];
     if (!ownerContact.name || !ownerContact.mobilePhone || !ownerContact.email || !ownerContact.whatsappNo) {
       setError('Mohon lengkapi semua field Owner di Contact Information.');
+      return;
+    }
+
+    // Validasi credit note claim
+    if (!form.claimCreditNoteTo) {
+      setError('Mohon pilih tempat klaim Credit Note.');
+      return;
+    }
+
+    if (form.claimCreditNoteTo === 'distributor' && !form.distributorName) {
+      setError('Mohon pilih nama Distributor untuk klaim Credit Note.');
+      return;
+    }
+
+    if (form.claimCreditNoteTo === 'master_dealer' && !form.masterDealerName.trim()) {
+      setError('Mohon isi nama Master Dealer untuk klaim Credit Note.');
       return;
     }
 
@@ -164,7 +278,7 @@ export default function ACPRegistration() {
 
     try {
       // Prepare data for PDF generation
-      const pdfData: PDFFormData = {
+      const pdfData: PDFFormDataSimple = {
         id: form.submissionId,
         acpName: form.acpName,
         acpAddress: form.acpAddress,
@@ -180,18 +294,56 @@ export default function ACPRegistration() {
         pkp: form.pkp,
         contacts: form.contacts,
         agreement: form.agreement,
+        claimCreditNoteTo: form.claimCreditNoteTo,
+        distributorName: form.distributorName,
+        masterDealerName: form.masterDealerName,
         createdAt: new Date().toISOString()
       };
 
-      // Generate PDF
-      const { blob, filename } = await generatePDF(pdfData);
+      let blob: Blob;
+      let filename: string;
+
+      try {
+        // Try the simple PDF generation method first (most reliable)
+        console.log('Attempting PDF generation with simple method...');
+        const result = await generateSimplePDF(pdfData);
+        blob = result.blob;
+        filename = result.filename;
+        console.log('PDF generated successfully with simple method');
+      } catch (simpleError) {
+        console.warn('Simple PDF generation failed, trying html2canvas method:', simpleError);
+        
+        try {
+          // Try the html2canvas method
+          const result = await Promise.race([
+            generatePDF(pdfData),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('PDF generation timeout')), 15000)
+            )
+          ]);
+          blob = result.blob;
+          filename = result.filename;
+          console.log('PDF generated successfully with html2canvas method');
+        } catch (htmlCanvasError) {
+          console.warn('html2canvas PDF generation failed, using basic fallback method:', htmlCanvasError);
+          
+          // Use basic fallback method as last resort
+          const fallbackResult = await generatePDFFallback(pdfData);
+          blob = fallbackResult.blob;
+          filename = fallbackResult.filename;
+          console.log('PDF generated successfully with basic fallback method');
+        }
+      }
 
       // Upload PDF to Supabase Storage
-      const uploadResult = await uploadPDFToStorage(blob, filename);
+      console.log('Uploading PDF to storage...');
+      const uploadResult = await uploadPDFToStorageSimple(blob, filename);
       
       if (!uploadResult.success) {
         throw new Error(uploadResult.error || 'Gagal mengupload PDF ke storage');
       }
+
+      console.log('PDF uploaded successfully');
 
       // Update database dengan URL PDF
       const updateRes = await fetch('/api/update-pdf-url', {
@@ -218,11 +370,79 @@ export default function ACPRegistration() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      console.log('PDF download initiated successfully');
+
     } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
-      else setError('Terjadi kesalahan saat membuat PDF');
+      console.error('PDF generation error:', err);
+      if (err instanceof Error) {
+        setError(`Gagal membuat PDF: ${err.message}`);
+      } else {
+        setError('Terjadi kesalahan tak terduga saat membuat PDF');
+      }
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  // Simple PDF download without upload to storage
+  const handleSimpleDownloadPDF = async () => {
+    if (!form.submissionId) {
+      setError('Tidak dapat men-generate PDF: ID submission tidak ditemukan');
+      return;
+    }
+
+    setSimplePdfLoading(true);
+    setError(null);
+
+    try {
+      // Prepare data for PDF generation
+      const pdfData: PDFFormDataSimple = {
+        id: form.submissionId,
+        acpName: form.acpName,
+        acpAddress: form.acpAddress,
+        city: form.city,
+        state: form.state,
+        postCode: form.postCode,
+        telephoneNo: form.telephoneNo,
+        faxNo: form.faxNo,
+        photoUrl: form.photoUrl,
+        idCardNo: form.idCardNo,
+        taxId: form.taxId,
+        sbnNib: form.sbnNib,
+        pkp: form.pkp,
+        contacts: form.contacts,
+        agreement: form.agreement,
+        claimCreditNoteTo: form.claimCreditNoteTo,
+        distributorName: form.distributorName,
+        masterDealerName: form.masterDealerName,
+        createdAt: new Date().toISOString()
+      };
+
+      // Use simple method directly
+      console.log('Generating PDF with simple method (no upload)...');
+      const { blob, filename } = await generateSimplePDF(pdfData);
+
+      // Download the PDF file directly
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      console.log('Simple PDF download completed successfully');
+
+    } catch (err: unknown) {
+      console.error('Simple PDF generation error:', err);
+      if (err instanceof Error) {
+        setError(`Gagal membuat PDF: ${err.message}`);
+      } else {
+        setError('Terjadi kesalahan tak terduga saat membuat PDF');
+      }
+    } finally {
+      setSimplePdfLoading(false);
     }
   };
 
@@ -291,7 +511,7 @@ export default function ACPRegistration() {
                 <div className="pt-4 space-y-4">
                   <button
                     onClick={handleDownloadPDF}
-                    disabled={pdfLoading}
+                    disabled={pdfLoading || simplePdfLoading}
                     className="inline-flex w-full justify-center items-center gap-2 rounded-lg bg-emerald-600 px-5 h-12 text-sm font-medium tracking-wide text-white shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-600/30 transition-colors"
                   >
                     {pdfLoading ? (
@@ -310,6 +530,32 @@ export default function ACPRegistration() {
                       </>
                     )}
                   </button>
+
+                  <button
+                    onClick={handleSimpleDownloadPDF}
+                    disabled={pdfLoading || simplePdfLoading}
+                    className="inline-flex w-full justify-center items-center gap-2 rounded-lg bg-blue-600 px-5 h-12 text-sm font-medium tracking-wide text-white shadow-sm disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-600/30 transition-colors"
+                  >
+                    {simplePdfLoading ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Membuat PDF...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Download Form PDF (Alternatif)
+                      </>
+                    )}
+                  </button>
+                  
+                  <div className="text-xs text-neutral-500 text-center px-4">
+                    <p>Jika tombol pertama tidak berfungsi, gunakan "Download Form PDF (Alternatif)"</p>
+                  </div>
                   
                   <button
                     onClick={() => {
@@ -335,6 +581,9 @@ export default function ACPRegistration() {
                           { ...initialContactInfo, type: 'Contact 3' }
                         ],
                         agreement: false,
+                        claimCreditNoteTo: '',
+                        distributorName: '',
+                        masterDealerName: '',
                         submissionId: undefined
                       });
                       setError(null);
@@ -571,6 +820,88 @@ export default function ACPRegistration() {
                 </div>
               </section>
 
+              {/* Credit Note Claim Section */}
+              <section className="space-y-4">
+                <h2 className="text-lg font-medium text-neutral-800 border-b border-neutral-200 pb-2">
+                  Claim Credit Note to
+                  <span className="text-red-600" aria-hidden> *</span>
+                </h2>
+                
+                <div className="space-y-4">
+                  {/* Radio buttons */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="claimCreditNoteTo"
+                        value="distributor"
+                        checked={form.claimCreditNoteTo === 'distributor'}
+                        onChange={(e) => {
+                          setForm(prev => ({ 
+                            ...prev, 
+                            claimCreditNoteTo: e.target.value as 'distributor' | 'master_dealer',
+                            distributorName: '',
+                            masterDealerName: ''
+                          }));
+                        }}
+                        className="h-4 w-4 text-asus-primary border-neutral-300 focus:ring-asus-primary/25 focus:ring-2"
+                        required
+                      />
+                      <span className="text-sm font-medium text-neutral-700">Distributor</span>
+                    </label>
+                    
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="claimCreditNoteTo"
+                        value="master_dealer"
+                        checked={form.claimCreditNoteTo === 'master_dealer'}
+                        onChange={(e) => {
+                          setForm(prev => ({ 
+                            ...prev, 
+                            claimCreditNoteTo: e.target.value as 'distributor' | 'master_dealer',
+                            distributorName: '',
+                            masterDealerName: ''
+                          }));
+                        }}
+                        className="h-4 w-4 text-asus-primary border-neutral-300 focus:ring-asus-primary/25 focus:ring-2"
+                        required
+                      />
+                      <span className="text-sm font-medium text-neutral-700">Master Dealer</span>
+                    </label>
+                  </div>
+
+                  {/* Distributor searchable dropdown */}
+                  {form.claimCreditNoteTo === 'distributor' && (
+                    <SearchableDistributorDropdown
+                      value={form.distributorName}
+                      onChange={(value) => setForm(prev => ({ ...prev, distributorName: value }))}
+                      options={distributorOptions}
+                      placeholder="Cari atau pilih distributor..."
+                      required
+                    />
+                  )}
+
+                  {/* Master Dealer text input */}
+                  {form.claimCreditNoteTo === 'master_dealer' && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-neutral-700">
+                        Nama Master Dealer
+                        <span className="text-red-600" aria-hidden> *</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={form.masterDealerName}
+                        onChange={(e) => setForm(prev => ({ ...prev, masterDealerName: e.target.value }))}
+                        className="block w-full rounded-md border border-neutral-300 bg-white px-4 py-2.5 text-sm text-neutral-800 shadow-inner focus:border-asus-primary focus:ring-4 focus:ring-asus-primary/25 outline-none transition"
+                        placeholder="Masukkan nama Master Dealer"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+              </section>
+
               {/* Agreement Section */}
               <section className="space-y-4">
                 <div className="flex items-start gap-3 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
@@ -655,6 +986,154 @@ export default function ACPRegistration() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Searchable Distributor Dropdown Component
+interface SearchableDistributorDropdownProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+  required?: boolean;
+}
+
+function SearchableDistributorDropdown({ 
+  value, 
+  onChange, 
+  options, 
+  placeholder = "Cari atau pilih distributor...",
+  required = false 
+}: SearchableDistributorDropdownProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [filteredOptions, setFilteredOptions] = useState(options);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Filter options based on search term
+  useEffect(() => {
+    const filtered = options.filter(option =>
+      option.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredOptions(filtered);
+  }, [searchTerm, options]);
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setSearchTerm(newValue);
+    
+    // If the input matches exactly with an option, set it as selected
+    if (options.includes(newValue)) {
+      onChange(newValue);
+    } else if (newValue === '') {
+      onChange('');
+    }
+    
+    setIsOpen(true);
+  };
+
+  const handleOptionSelect = (option: string) => {
+    onChange(option);
+    setSearchTerm(option);
+    setIsOpen(false);
+    inputRef.current?.blur();
+  };
+
+  const handleInputFocus = () => {
+    setIsOpen(true);
+    setSearchTerm(value);
+  };
+
+  const handleInputBlur = () => {
+    // Small delay to allow option selection
+    setTimeout(() => {
+      if (!value) {
+        setSearchTerm('');
+      } else {
+        setSearchTerm(value);
+      }
+    }, 150);
+  };
+
+  // Display the selected value or search term
+  const displayValue = isOpen ? searchTerm : value;
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium text-neutral-700">
+        Pilih Distributor
+        {required && (
+          <>
+            <span className="text-red-600" aria-hidden> *</span>
+            <span className="sr-only">(wajib)</span>
+          </>
+        )}
+      </label>
+      
+      <div className="relative" ref={dropdownRef}>
+        <input
+          ref={inputRef}
+          type="text"
+          value={displayValue}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          placeholder={placeholder}
+          required={required}
+          className="block w-full rounded-md border border-neutral-300 bg-white px-4 py-2.5 text-sm text-neutral-800 shadow-inner focus:border-asus-primary focus:ring-4 focus:ring-asus-primary/25 outline-none transition pr-10"
+          autoComplete="off"
+        />
+        
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <svg 
+            className={`w-4 h-4 text-neutral-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-neutral-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleOptionSelect(option)}
+                  className={`w-full text-left px-4 py-2 text-sm text-neutral-800 hover:bg-asus-primary/10 focus:bg-asus-primary/10 focus:outline-none transition ${
+                    value === option ? 'bg-asus-primary/10 font-medium' : ''
+                  }`}
+                >
+                  {option}
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-2 text-sm text-neutral-500">
+                Tidak ada distributor yang cocok dengan "{searchTerm}"
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

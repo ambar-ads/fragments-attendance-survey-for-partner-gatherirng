@@ -23,10 +23,15 @@ export interface FormData {
     whatsappNo: string;
   }>;
   agreement: boolean;
+  claimCreditNoteTo: 'distributor' | 'master_dealer' | '';
+  distributorName: string;
+  masterDealerName: string;
   createdAt?: string;
 }
 
 export const generatePDF = async (formData: FormData): Promise<{blob: Blob, filename: string}> => {
+  console.log('Starting PDF generation with html2canvas method...');
+  
   // Create a temporary div to render the PDF content
   const tempDiv = document.createElement('div');
   tempDiv.style.position = 'absolute';
@@ -44,12 +49,16 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
     day: 'numeric'
   });
 
+  console.log('Creating HTML content for PDF...');
+
   tempDiv.innerHTML = `
     <div style="max-width: 714px; margin: 0 auto; background: white;">
       <!-- Header with Logo -->
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #0066cc; padding-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 20px;">
-          <img src="/ASUS_Logo.svg" alt="ASUS Logo" style="height: 40px; width: auto;" />
+          <div style="width: 40px; height: 40px; background-color: #0066cc; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+            <span style="color: white; font-weight: bold; font-size: 16px;">ASUS</span>
+          </div>
           <div>
             <h1 style="margin: 0; font-size: 18px; font-weight: bold; color: #0066cc;">ASUS Commercial Partner Program</h1>
             <p style="margin: 0; font-size: 12px; color: #666;">Form Pendaftaran ACP</p>
@@ -107,7 +116,10 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
           Foto Toko
         </h2>
         <div style="text-align: center;">
-          <img src="${formData.photoUrl}" alt="Store Photo" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;" />
+          <div style="display: inline-block; padding: 20px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">
+            <p style="margin: 0; font-size: 12px; color: #666;">Foto toko tersedia di:</p>
+            <p style="margin: 5px 0 0 0; font-size: 10px; color: #0066cc; word-break: break-all;">${formData.photoUrl}</p>
+          </div>
         </div>
       </div>
       ` : ''}
@@ -166,6 +178,32 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
         </table>
       </div>
 
+      <!-- Credit Note Claim Section -->
+      <div style="margin-bottom: 25px;">
+        <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px;">
+          Claim Credit Note to
+        </h2>
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px;">
+          <div style="margin-bottom: 10px;">
+            <span style="font-size: 14px; font-weight: bold; color: #333;">Klaim ke: </span>
+            <span style="font-size: 14px; color: #0066cc; font-weight: bold;">
+              ${formData.claimCreditNoteTo === 'distributor' ? 'Distributor' : 'Master Dealer'}
+            </span>
+          </div>
+          ${formData.claimCreditNoteTo === 'distributor' ? `
+            <div>
+              <span style="font-size: 14px; font-weight: bold; color: #333;">Nama Distributor: </span>
+              <span style="font-size: 14px; color: #333;">${formData.distributorName}</span>
+            </div>
+          ` : `
+            <div>
+              <span style="font-size: 14px; font-weight: bold; color: #333;">Nama Master Dealer: </span>
+              <span style="font-size: 14px; color: #333;">${formData.masterDealerName}</span>
+            </div>
+          `}
+        </div>
+      </div>
+
       <!-- Agreement Section -->
       <div style="margin-bottom: 25px;">
         <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px;">
@@ -192,16 +230,24 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
   document.body.appendChild(tempDiv);
 
   try {
+    console.log('Generating canvas from HTML...');
     // Generate canvas from the div
     const canvas = await html2canvas(tempDiv, {
       backgroundColor: '#ffffff',
-      scale: 2, // Higher quality
-      useCORS: true,
+      scale: 1.5, // Reduced scale for better performance
+      useCORS: false, // Disable CORS to avoid image loading issues
       allowTaint: true,
       logging: false,
       width: 794,
-      height: tempDiv.scrollHeight
+      height: tempDiv.scrollHeight,
+      foreignObjectRendering: false, // Disable foreign object rendering
+      ignoreElements: (element) => {
+        // Ignore any img elements that might cause CORS issues
+        return element.tagName === 'IMG';
+      }
     });
+
+    console.log('Canvas generated successfully, creating PDF...');
 
     // Create PDF
     const pdf = new jsPDF({
@@ -232,12 +278,19 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `ACP-Registration-${formData.acpName.replace(/[^a-zA-Z0-9]/g, '-')}-${timestamp}.pdf`;
 
+    console.log('PDF created successfully, generating blob...');
+
     // Convert to blob
     const blob = pdf.output('blob');
 
+    console.log('PDF generation completed successfully');
     return { blob, filename };
+  } catch (error) {
+    console.error('Error in PDF generation:', error);
+    throw error;
   } finally {
     // Clean up
+    console.log('Cleaning up temporary DOM elements...');
     document.body.removeChild(tempDiv);
   }
 };

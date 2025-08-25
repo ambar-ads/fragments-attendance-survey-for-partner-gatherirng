@@ -24,7 +24,10 @@ export async function POST(request: NextRequest) {
       sbnNib,
       pkp,
       contacts,
-      agreement
+      agreement,
+      claimCreditNoteTo,
+      distributorName,
+      masterDealerName
     } = body;
 
     // Validasi data
@@ -38,6 +41,28 @@ export async function POST(request: NextRequest) {
     if (!agreement) {
       return NextResponse.json(
         { error: 'Anda harus menyetujui untuk bergabung dengan ASUS Commercial Partner' },
+        { status: 400 }
+      );
+    }
+
+    // Validasi credit note claim
+    if (!claimCreditNoteTo) {
+      return NextResponse.json(
+        { error: 'Mohon pilih tempat klaim Credit Note' },
+        { status: 400 }
+      );
+    }
+
+    if (claimCreditNoteTo === 'distributor' && !distributorName) {
+      return NextResponse.json(
+        { error: 'Mohon pilih nama Distributor untuk klaim Credit Note' },
+        { status: 400 }
+      );
+    }
+
+    if (claimCreditNoteTo === 'master_dealer' && !masterDealerName?.trim()) {
+      return NextResponse.json(
+        { error: 'Mohon isi nama Master Dealer untuk klaim Credit Note' },
         { status: 400 }
       );
     }
@@ -59,6 +84,9 @@ export async function POST(request: NextRequest) {
         sbn_nib: sbnNib,
         pkp,
         agreement,
+        claim_credit_note_to: claimCreditNoteTo,
+        distributor_name: claimCreditNoteTo === 'distributor' ? distributorName : null,
+        master_dealer_name: claimCreditNoteTo === 'master_dealer' ? masterDealerName : null,
         created_at: new Date().toISOString()
       })
       .select()
