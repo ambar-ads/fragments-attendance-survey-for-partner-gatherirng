@@ -222,8 +222,8 @@ export default function ACPRegistration() {
       return;
     }
 
-    if (form.claimCreditNoteTo === 'distributor' && !form.distributorName.trim()) {
-      setError('Mohon isi nama Distributor untuk klaim Credit Note.');
+    if (form.claimCreditNoteTo === 'distributor' && !form.distributorName) {
+      setError('Mohon pilih nama Distributor untuk klaim Credit Note.');
       return;
     }
 
@@ -880,22 +880,16 @@ export default function ACPRegistration() {
                     </label>
                   </div>
 
-                  {/* Distributor text input */}
+                  {/* Distributor searchable dropdown */}
                   {form.claimCreditNoteTo === 'distributor' && (
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-neutral-700">
-                        Distributor Name
-                        <span className="text-red-600" aria-hidden> *</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={form.distributorName}
-                        onChange={(e) => setForm(prev => ({ ...prev, distributorName: e.target.value }))}
-                        className="block w-full rounded-md border border-neutral-300 bg-white px-4 py-2.5 text-sm text-neutral-800 shadow-inner focus:border-asus-primary focus:ring-4 focus:ring-asus-primary/25 outline-none transition"
-                        placeholder="Masukkan nama Distributor"
-                        required
-                      />
-                    </div>
+                    <SearchableDistributorDropdown
+                      value={form.distributorName}
+                      onChange={(value) => setForm(prev => ({ ...prev, distributorName: value }))}
+                      options={distributorOptions}
+                      placeholder="Cari atau pilih distributor..."
+                      label="Pilih Distributor"
+                      required
+                    />
                   )}
 
                   {/* Master Dealer input with suggestions */}
