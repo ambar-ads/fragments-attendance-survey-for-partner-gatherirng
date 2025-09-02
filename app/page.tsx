@@ -55,13 +55,6 @@ export default function Home() {
       setError('Mohon lengkapi semua field.');
       return;
     }
-    
-    // Validasi Sales Training Participant 1 (wajib)
-    const st1 = form.salesTrainingParticipants.participant1;
-    if (!st1.name || !st1.phone || !st1.email || !st1.foodPreference) {
-      setError('Mohon lengkapi data Peserta 1 Sales Training.');
-      return;
-    }
     setLoading(true);
     try {
       const res = await fetch('/api/rsvp', {
@@ -272,9 +265,13 @@ function SalesTrainingParticipantsTable({
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-medium text-neutral-700">
-        Peserta yang hadir Sales Training <span className="text-red-600" aria-hidden>*</span>
-        <span className="sr-only">(minimal Peserta 1 wajib diisi)</span>
+        Peserta yang hadir Sales Training
+        <span className="sr-only">(opsional)</span>
       </h3>
+      <p className="text-xs text-neutral-600 bg-neutral-50 p-3 rounded-lg border border-neutral-200">
+        <strong>Panduan pengisian:</strong> Masukan nama sales anda yang akan ikut pada sales training ini. 
+        Jika tidak ada tetapi anda ingin hadir di sesi sales training dapat tuliskan nama anda.
+      </p>
       <div className="overflow-x-auto">
         <table className="w-full border border-neutral-200 rounded-lg">
           <thead className="bg-neutral-50">
@@ -283,22 +280,20 @@ function SalesTrainingParticipantsTable({
               <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-neutral-200">Nama</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-neutral-200">No. Telepon</th>
               <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-neutral-200">Email</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider border-b border-neutral-200">Preferensi Makanan</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-neutral-200">
             <tr>
               <td className="px-3 py-2 text-sm text-neutral-700 font-medium">
-                Peserta 1 <span className="text-red-600">*</span>
+                Peserta 1 <span className="text-neutral-400">(opsional)</span>
               </td>
               <td className="px-3 py-2">
                 <input
                   type="text"
                   value={participants.participant1.name}
                   onChange={(e) => updateParticipant('participant1', 'name', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
+                  className="w-full px-2 py-1 text-sm text-neutral-800 placeholder:text-neutral-500 border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
                   placeholder="Nama lengkap"
-                  required
                 />
               </td>
               <td className="px-3 py-2">
@@ -306,9 +301,8 @@ function SalesTrainingParticipantsTable({
                   type="tel"
                   value={participants.participant1.phone}
                   onChange={(e) => updateParticipant('participant1', 'phone', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
+                  className="w-full px-2 py-1 text-sm text-neutral-800 placeholder:text-neutral-500 border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
                   placeholder="08xxxxxxxxxx"
-                  required
                 />
               </td>
               <td className="px-3 py-2">
@@ -316,23 +310,9 @@ function SalesTrainingParticipantsTable({
                   type="email"
                   value={participants.participant1.email}
                   onChange={(e) => updateParticipant('participant1', 'email', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
+                  className="w-full px-2 py-1 text-sm text-neutral-800 placeholder:text-neutral-500 border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
                   placeholder="email@domain.com"
-                  required
                 />
-              </td>
-              <td className="px-3 py-2">
-                <select
-                  value={participants.participant1.foodPreference}
-                  onChange={(e) => updateParticipant('participant1', 'foodPreference', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
-                  required
-                >
-                  <option value="">Pilih</option>
-                  <option value="Daging">Daging</option>
-                  <option value="Ikan">Ikan</option>
-                  <option value="Vegan">Vegan</option>
-                </select>
               </td>
             </tr>
             <tr>
@@ -344,7 +324,7 @@ function SalesTrainingParticipantsTable({
                   type="text"
                   value={participants.participant2.name}
                   onChange={(e) => updateParticipant('participant2', 'name', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
+                  className="w-full px-2 py-1 text-sm text-neutral-800 placeholder:text-neutral-500 border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
                   placeholder="Nama lengkap"
                 />
               </td>
@@ -353,7 +333,7 @@ function SalesTrainingParticipantsTable({
                   type="tel"
                   value={participants.participant2.phone}
                   onChange={(e) => updateParticipant('participant2', 'phone', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
+                  className="w-full px-2 py-1 text-sm text-neutral-800 placeholder:text-neutral-500 border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
                   placeholder="08xxxxxxxxxx"
                 />
               </td>
@@ -362,21 +342,9 @@ function SalesTrainingParticipantsTable({
                   type="email"
                   value={participants.participant2.email}
                   onChange={(e) => updateParticipant('participant2', 'email', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
-                  placeholder="email@domain.com"
+                  className="w-full px-2 py-1 text-sm text-neutral-800 placeholder:text-neutral-500 border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
+                  placeholder="email@perusahaan.com"
                 />
-              </td>
-              <td className="px-3 py-2">
-                <select
-                  value={participants.participant2.foodPreference}
-                  onChange={(e) => updateParticipant('participant2', 'foodPreference', e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:border-asus-primary focus:ring-1 focus:ring-asus-primary/25 outline-none"
-                >
-                  <option value="">Pilih</option>
-                  <option value="Daging">Daging</option>
-                  <option value="Ikan">Ikan</option>
-                  <option value="Vegan">Vegan</option>
-                </select>
               </td>
             </tr>
           </tbody>
