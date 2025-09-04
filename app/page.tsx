@@ -93,16 +93,26 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{
+        backgroundImage: "url('/bg_form.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        // optional light overlay fallback color
+        backgroundColor: 'rgba(249,250,251,0.6)'
+      }}
+    >
       <Header />
       <main className="flex-1 flex items-start justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-2xl">
           <div className="mb-8">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-asus-primary flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white flex items-center gap-3">
               <span className="inline-block h-9 w-1.5 bg-asus-accent rounded-full" />
               ASUS Expert Hadir di Surabaya!
             </h1>
-            <p className="mt-2 text-sm text-neutral-600">Kami mengundang Anda untuk hadir dalam event spesial ASUS Expert Series untuk langsung menguji ketangguhan dari produk ASUS Expert, mendapatkan insight bisnis, hiburan, dan juga networking bersama partner se-Jawa Timur.</p>
+            <p className="mt-2 text-sm text-white">Kami mengundang Anda untuk hadir dalam event spesial ASUS Expert Series untuk langsung menguji ketangguhan dari produk ASUS Expert, mendapatkan insight bisnis, hiburan, dan juga networking bersama partner se-Jawa Timur.</p>
             <div className="mt-4 space-y-3">
               <EventInfoAccordion />
               <AdditionalInfoAccordion />
@@ -418,7 +428,7 @@ function EventInfoAccordion() {
         aria-expanded={open}
         className="w-full flex items-center justify-between gap-4 px-4 py-3 text-left hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-asus-primary/30 transition"
       >
-        <span className="text-sm font-medium text-neutral-800 flex items-center gap-2">
+  <span className="text-sm font-bold text-neutral-800 flex items-center gap-2">
           <svg aria-hidden className="h-4 w-4 text-asus-primary" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 0 1 0-2h5V4a1 1 0 0 1 1-1Z" /></svg>
           Informasi Acara
         </span>
@@ -486,7 +496,7 @@ function AdditionalInfoAccordion() {
         aria-expanded={open}
         className="w-full flex items-center justify-between gap-4 px-4 py-3 text-left hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-asus-primary/30 transition"
       >
-        <span className="text-sm font-medium text-neutral-800 flex items-center gap-2">
+  <span className="text-sm font-bold text-neutral-800 flex items-center gap-2">
           <svg aria-hidden className="h-4 w-4 text-asus-primary" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 0 1 0-2h5V4a1 1 0 0 1 1-1Z" /></svg>
           Informasi Tambahan
         </span>
