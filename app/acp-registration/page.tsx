@@ -2,8 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { generatePDF, uploadPDFToStorage, FormData as PDFFormData } from '../../lib/pdfGenerator';
-import { generatePDFFallback, uploadPDFToStorage as uploadPDFToStorageFallback, FormData as PDFFormDataFallback } from '../../lib/pdfGeneratorFallback';
-import { generateSimplePDF, uploadPDFToStorage as uploadPDFToStorageSimple, FormData as PDFFormDataSimple } from '../../lib/pdfGeneratorSimple';
+import { generatePDFFallback } from '../../lib/pdfGeneratorFallback';
+import { generateSimplePDF, FormData as PDFFormDataSimple } from '../../lib/pdfGeneratorSimple';
 import { uploadFileToStorage } from '../../lib/supabaseStorage';
 
 interface ContactInfo {
@@ -307,8 +307,6 @@ export default function ACPRegistration() {
   const [showExampleModal, setShowExampleModal] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [simplePdfLoading, setSimplePdfLoading] = useState(false);
-  const [distributorSearch, setDistributorSearch] = useState('');
-  const [showDistributorDropdown, setShowDistributorDropdown] = useState(false);
 
   const handleInputChange = (field: keyof ACPFormState, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -420,7 +418,7 @@ export default function ACPRegistration() {
 
     try {
       // Prepare data for PDF generation
-      const pdfData: PDFFormDataSimple = {
+      const pdfData: PDFFormData = {
         id: form.submissionId,
         acpName: form.acpName,
         acpAddress: form.acpAddress,
@@ -446,28 +444,29 @@ export default function ACPRegistration() {
       let filename: string;
 
       try {
-        // Try the simple PDF generation method first (most reliable)
-        console.log('Attempting PDF generation with simple method...');
-        const result = await generateSimplePDF(pdfData);
+        // Try the html2canvas method first (more feature-rich)
+        console.log('Attempting PDF generation with html2canvas method...');
+        const result = await Promise.race([
+          generatePDF(pdfData),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('PDF generation timeout')), 20000) // Increased timeout
+          )
+        ]);
         blob = result.blob;
         filename = result.filename;
-        console.log('PDF generated successfully with simple method');
-      } catch (simpleError) {
-        console.warn('Simple PDF generation failed, trying html2canvas method:', simpleError);
+        console.log('PDF generated successfully with html2canvas method');
+      } catch (htmlCanvasError) {
+        console.warn('html2canvas PDF generation failed, trying simple method:', htmlCanvasError);
         
         try {
-          // Try the html2canvas method
-          const result = await Promise.race([
-            generatePDF(pdfData),
-            new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('PDF generation timeout')), 15000)
-            )
-          ]);
+          // Try the simple PDF generation method as fallback
+          console.log('Attempting PDF generation with simple method...');
+          const result = await generateSimplePDF(pdfData);
           blob = result.blob;
           filename = result.filename;
-          console.log('PDF generated successfully with html2canvas method');
-        } catch (htmlCanvasError) {
-          console.warn('html2canvas PDF generation failed, using basic fallback method:', htmlCanvasError);
+          console.log('PDF generated successfully with simple method');
+        } catch (simpleError) {
+          console.warn('Simple PDF generation failed, using basic fallback method:', simpleError);
           
           // Use basic fallback method as last resort
           const fallbackResult = await generatePDFFallback(pdfData);
@@ -479,7 +478,7 @@ export default function ACPRegistration() {
 
       // Upload PDF to Supabase Storage
       console.log('Uploading PDF to storage...');
-      const uploadResult = await uploadPDFToStorageSimple(blob, filename);
+      const uploadResult = await uploadPDFToStorage(blob, filename);
       
       if (!uploadResult.success) {
         throw new Error(uploadResult.error || 'Gagal mengupload PDF ke storage');

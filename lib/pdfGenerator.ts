@@ -31,16 +31,101 @@ export interface FormData {
 
 export const generatePDF = async (formData: FormData): Promise<{blob: Blob, filename: string}> => {
   console.log('Starting PDF generation with html2canvas method...');
+  // Normalize: create an uppercased copy of user-input fields for PDF output
+  const normalizeToUpper = (s: string | undefined | null) => (s === undefined || s === null) ? '' : String(s).toUpperCase();
+
+  const upper: FormData = {
+    ...formData,
+    acpName: normalizeToUpper(formData.acpName),
+    acpAddress: normalizeToUpper(formData.acpAddress),
+    city: normalizeToUpper(formData.city),
+    state: normalizeToUpper(formData.state),
+    postCode: normalizeToUpper(formData.postCode),
+    telephoneNo: normalizeToUpper(formData.telephoneNo),
+    faxNo: normalizeToUpper(formData.faxNo),
+    photoUrl: formData.photoUrl,
+    idCardNo: normalizeToUpper(formData.idCardNo),
+    taxId: normalizeToUpper(formData.taxId),
+    sbnNib: normalizeToUpper(formData.sbnNib),
+    pkp: normalizeToUpper(formData.pkp),
+    contacts: (formData.contacts || []).map(c => ({
+      type: normalizeToUpper(c.type),
+      name: normalizeToUpper(c.name),
+      mobilePhone: normalizeToUpper(c.mobilePhone),
+      email: normalizeToUpper(c.email),
+      whatsappNo: normalizeToUpper(c.whatsappNo)
+    })),
+    claimCreditNoteTo: formData.claimCreditNoteTo,
+    distributorName: normalizeToUpper(formData.distributorName),
+    masterDealerName: normalizeToUpper(formData.masterDealerName),
+    createdAt: formData.createdAt
+  };
   
+  // Helper: fetch an image and convert to data URL so html2canvas can render it reliably
+  const fetchImageAsDataURL = async (url: string | undefined): Promise<string | null> => {
+    try {
+      if (!url) return null;
+      
+      // Add timeout and proper headers for Supabase images
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 8000); // Reduced timeout to 8 seconds
+      
+      const res = await fetch(url, {
+        signal: controller.signal,
+        mode: 'cors',
+        headers: {
+          'Accept': 'image/*',
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        console.warn(`Failed to fetch image: ${res.status} ${res.statusText}`);
+        return null;
+      }
+      
+      const blob = await res.blob();
+      return await new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => {
+          console.warn('FileReader error');
+          resolve(null);
+        };
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      // Handle abort errors gracefully
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.warn('Image fetch aborted due to timeout');
+        return null;
+      }
+      console.warn('Failed to fetch image as data URL:', err);
+      return null;
+    }
+  };
+
+  // Preload logo as data URL
+  const logoPath = '/ASUS_BUSINESS_standard_whitekbg_Mar 2025.png';
+  const logoDataUrl = await fetchImageAsDataURL(logoPath);
+
   // Create a temporary div to render the PDF content
   const tempDiv = document.createElement('div');
   tempDiv.style.position = 'absolute';
   tempDiv.style.left = '-9999px';
   tempDiv.style.top = '-9999px';
+  // Use a width that maps to A4 at 96dpi with some printable margin
   tempDiv.style.width = '794px'; // A4 width in pixels at 96 DPI
   tempDiv.style.backgroundColor = 'white';
-  tempDiv.style.padding = '40px';
-  tempDiv.style.fontFamily = 'Arial, sans-serif';
+  tempDiv.style.padding = '48px 48px';
+  tempDiv.style.boxSizing = 'border-box';
+  tempDiv.style.fontFamily = 'Inter, Arial, sans-serif';
+  tempDiv.style.setProperty('-webkit-font-smoothing', 'antialiased');
+  tempDiv.style.setProperty('-moz-osx-font-smoothing', 'grayscale');
+  tempDiv.style.textRendering = 'optimizeLegibility';
   
   // Current date for the form
   const currentDate = new Date().toLocaleDateString('id-ID', {
@@ -52,126 +137,111 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
   console.log('Creating HTML content for PDF...');
 
   tempDiv.innerHTML = `
-    <div style="max-width: 714px; margin: 0 auto; background: white;">
+  <div style="max-width: 714px; margin: 0 auto; background: white; color: #000;">
       <!-- Header with Logo -->
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid #0066cc; padding-bottom: 20px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; border-bottom: 2px solid #0066cc; padding-bottom: 18px;">
         <div style="display: flex; align-items: center; gap: 20px;">
-          <div style="width: 40px; height: 40px; background-color: #0066cc; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
-            <span style="color: white; font-weight: bold; font-size: 16px;">ASUS</span>
+          <div style="width: 160px; height: auto; display: flex; align-items: center; justify-content: flex-start;">
+            ${logoDataUrl ? `<img src="${logoDataUrl}" alt="ASUS Business" style="max-height:56px; object-fit:contain;"/>` : `<div style=\"width:48px;height:48px;background-color:#0066cc;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;\">ASUS</div>`}
           </div>
           <div>
-            <h1 style="margin: 0; font-size: 18px; font-weight: bold; color: #0066cc;">ASUS Commercial Partner Program</h1>
-            <p style="margin: 0; font-size: 12px; color: #666;">Form Pendaftaran ACP</p>
+            <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #0066cc;">ASUS Commercial Partner Program</h1>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: #000;">Form Pendaftaran ACP</p>
           </div>
         </div>
-        <div style="text-align: right; font-size: 12px; color: #666;">
+        <div style="text-align: right; font-size: 12px; color: #666; min-width:120px;">
           <p style="margin: 0;">Tanggal: ${currentDate}</p>
           <p style="margin: 0;">ID: ${formData.id || 'N/A'}</p>
         </div>
       </div>
 
       <!-- Company Information -->
-      <div style="margin-bottom: 25px;">
-        <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px;">
+      <div style="margin-bottom: 28px;">
+  <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 18px; color: #000; border-bottom: 1px solid #ddd; padding-bottom: 8px;">
           Informasi Perusahaan
         </h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           <div>
-            <label style="font-size: 12px; font-weight: bold; color: #555;">Nama ACP:</label>
-            <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.acpName}</p>
+            <label style="font-size: 13px; font-weight: 700; color: #000;">Nama ACP:</label>
+            <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${upper.acpName}</p>
           </div>
           <div>
-            <label style="font-size: 12px; font-weight: bold; color: #555;">Kota:</label>
-            <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.city}</p>
+            <label style="font-size: 13px; font-weight: 700; color: #000;">Kota:</label>
+            <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${upper.city}</p>
           </div>
         </div>
-        <div style="margin-bottom: 10px;">
-          <label style="font-size: 12px; font-weight: bold; color: #555;">Alamat:</label>
-          <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.acpAddress}</p>
+        <div style="margin-bottom: 14px;">
+          <label style="font-size: 13px; font-weight: 700; color: #000;">Alamat:</label>
+          <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${upper.acpAddress}</p>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
           <div>
-            <label style="font-size: 12px; font-weight: bold; color: #555;">Provinsi:</label>
-            <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.state}</p>
-          </div>
-          <div>
-            <label style="font-size: 12px; font-weight: bold; color: #555;">Kode Pos:</label>
-            <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.postCode}</p>
+            <label style="font-size: 13px; font-weight: 700; color: #000;">Provinsi:</label>
+            <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${upper.state}</p>
           </div>
           <div>
-            <label style="font-size: 12px; font-weight: bold; color: #555;">Telepon:</label>
-            <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.telephoneNo}</p>
+            <label style="font-size: 13px; font-weight: 700; color: #000;">Kode Pos:</label>
+            <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${upper.postCode}</p>
+          </div>
+          <div>
+            <label style="font-size: 13px; font-weight: 700; color: #000;">Telepon:</label>
+            <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${upper.telephoneNo}</p>
           </div>
         </div>
-        <div style="margin-bottom: 10px;">
-          <label style="font-size: 12px; font-weight: bold; color: #555;">Fax:</label>
-          <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.faxNo || '-'}</p>
-        </div>
-      </div>
-
-      <!-- Store Photo Section -->
-      ${formData.photoUrl ? `
-      <div style="margin-bottom: 25px;">
-        <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px;">
-          Foto Toko
-        </h2>
-        <div style="text-align: center;">
-          <div style="display: inline-block; padding: 20px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">
-            <p style="margin: 0; font-size: 12px; color: #666;">Foto toko tersedia di:</p>
-            <p style="margin: 5px 0 0 0; font-size: 10px; color: #0066cc; word-break: break-all;">${formData.photoUrl}</p>
-          </div>
+        <div style="margin-bottom: 14px;">
+          <label style="font-size: 13px; font-weight: 700; color: #000;">Fax:</label>
+          <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${upper.faxNo || '-'}</p>
         </div>
       </div>
-      ` : ''}
 
       <!-- Legal Information -->
-      <div style="margin-bottom: 25px;">
-        <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px;">
+      <div style="margin-bottom: 28px;">
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 18px; color: #000; border-bottom: 1px solid #ddd; padding-bottom: 8px;">
           Informasi Legal
         </h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           <div>
-            <label style="font-size: 12px; font-weight: bold; color: #555;">No. KTP:</label>
-            <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.idCardNo || '-'}</p>
+            <label style="font-size: 13px; font-weight: 700; color: #000;">No. KTP:</label>
+            <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${formData.idCardNo || '-'}</p>
           </div>
           <div>
-            <label style="font-size: 12px; font-weight: bold; color: #555;">NPWP:</label>
-            <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.taxId || '-'}</p>
+            <label style="font-size: 13px; font-weight: 700; color: #000;">NPWP:</label>
+            <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${formData.taxId || '-'}</p>
           </div>
           <div>
-            <label style="font-size: 12px; font-weight: bold; color: #555;">NIB:</label>
-            <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.sbnNib || '-'}</p>
+            <label style="font-size: 13px; font-weight: 700; color: #000;">NIB:</label>
+            <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${formData.sbnNib || '-'}</p>
           </div>
           <div>
-            <label style="font-size: 12px; font-weight: bold; color: #555;">PKP:</label>
-            <p style="margin: 0 0 10px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;">${formData.pkp || '-'}</p>
+            <label style="font-size: 13px; font-weight: 700; color: #000;">PKP:</label>
+            <p style="margin: 0 0 12px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; color:#000;">${formData.pkp || '-'}</p>
           </div>
         </div>
       </div>
 
       <!-- Contact Information -->
-      <div style="margin-bottom: 25px;">
-        <h2 style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 5px;">
+      <div style="margin-bottom: 28px;">
+        <h2 style="font-size: 17px; font-weight: 700; margin-bottom: 18px; color: #000; border-bottom: 1px solid #ddd; padding-bottom: 8px;">
           Informasi Kontak
         </h2>
         <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
           <thead>
-            <tr style="background-color: #f5f5f5;">
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Tipe Kontak</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Nama</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Telepon</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Email</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">WhatsApp</th>
+              <tr style="background-color: #f5f5f5; color:#000;">
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Tipe Kontak</th>
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Nama</th>
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Telepon</th>
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Email</th>
+              <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">WhatsApp</th>
             </tr>
           </thead>
           <tbody>
             ${formData.contacts.map(contact => `
               <tr>
-                <td style="border: 1px solid #ddd; padding: 8px; font-weight: ${contact.type === 'Owner' ? 'bold' : 'normal'};">${contact.type}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${contact.name || '-'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${contact.mobilePhone || '-'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${contact.email || '-'}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${contact.whatsappNo || '-'}</td>
+                <td style="border: 1px solid #ddd; padding: 12px; font-weight: ${contact.type === 'Owner' ? '700' : '400'}; color:#000;">${contact.type}</td>
+                    <td style="border: 1px solid #ddd; padding: 12px; color:#000;">${(contact.name || '-').toString().toUpperCase()}</td>
+                    <td style="border: 1px solid #ddd; padding: 12px; color:#000;">${(contact.mobilePhone || '-').toString().toUpperCase()}</td>
+                    <td style="border: 1px solid #ddd; padding: 12px; color:#000;">${(contact.email || '-').toString().toUpperCase()}</td>
+                    <td style="border: 1px solid #ddd; padding: 12px; color:#000;">${(contact.whatsappNo || '-').toString().toUpperCase()}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -187,18 +257,18 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
           <div style="margin-bottom: 10px;">
             <span style="font-size: 14px; font-weight: bold; color: #333;">Klaim ke: </span>
             <span style="font-size: 14px; color: #0066cc; font-weight: bold;">
-              ${formData.claimCreditNoteTo === 'distributor' ? 'Distributor' : 'Master Dealer'}
+              ${upper.claimCreditNoteTo === 'distributor' ? 'DISTRIBUTOR' : 'MASTER DEALER'}
             </span>
           </div>
-          ${formData.claimCreditNoteTo === 'distributor' ? `
+          ${upper.claimCreditNoteTo === 'distributor' ? `
             <div>
               <span style="font-size: 14px; font-weight: bold; color: #333;">Nama Distributor: </span>
-              <span style="font-size: 14px; color: #333;">${formData.distributorName}</span>
+              <span style="font-size: 14px; color: #333;">${upper.distributorName}</span>
             </div>
           ` : `
             <div>
               <span style="font-size: 14px; font-weight: bold; color: #333;">Nama Master Dealer: </span>
-              <span style="font-size: 14px; color: #333;">${formData.masterDealerName}</span>
+              <span style="font-size: 14px; color: #333;">${upper.masterDealerName}</span>
             </div>
           `}
         </div>
@@ -220,7 +290,7 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
       </div>
 
       <!-- Footer -->
-      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #666;">
+      <div style="margin-top: 15px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #666;">
         <p style="margin: 0;">© ${new Date().getFullYear()} ASUS. All rights reserved.</p>
         <p style="margin: 5px 0 0 0;">Dokumen ini dibuat secara otomatis dari sistem pendaftaran ASUS Commercial Partner</p>
       </div>
@@ -232,19 +302,22 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
   try {
     console.log('Generating canvas from HTML...');
     // Generate canvas from the div
+    // Render the temporary DOM to canvas. We embedded images as data URLs so CORS shouldn't be an issue.
+    // Choose scale to improve output resolution; avoid extreme values to prevent OOM.
+    const desiredScale = (window.devicePixelRatio || 1) * 2.5; // Increased scale for better quality
+    const scale = Math.min(3, Math.max(2, desiredScale)); // Increased min and max scale for better quality
+
     const canvas = await html2canvas(tempDiv, {
       backgroundColor: '#ffffff',
-      scale: 1.5, // Reduced scale for better performance
-      useCORS: false, // Disable CORS to avoid image loading issues
-      allowTaint: true,
+      scale,
+      useCORS: true,
+      allowTaint: false,
       logging: false,
       width: 794,
       height: tempDiv.scrollHeight,
-      foreignObjectRendering: false, // Disable foreign object rendering
-      ignoreElements: (element) => {
-        // Ignore any img elements that might cause CORS issues
-        return element.tagName === 'IMG';
-      }
+      foreignObjectRendering: false,
+      imageTimeout: 8000, // Increased timeout for higher quality rendering
+      removeContainer: true
     });
 
     console.log('Canvas generated successfully, creating PDF...');
@@ -256,27 +329,62 @@ export const generatePDF = async (formData: FormData): Promise<{blob: Blob, file
       format: 'a4'
     });
 
-    const imgWidth = 210; // A4 width in mm
-    const pageHeight = 295; // A4 height in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
+    // Configure PDF page and margins
+    const pageWidth = 210; // A4 width in mm
+    const pageHeight = 297; // A4 height in mm
+    const pdfMargin = 12; // outer margin in mm (left/right/top/bottom)
 
-    // Add first page
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    // Use content width (mm) for the rendered image (respect left/right margins)
+    const contentWidthMm = pageWidth - pdfMargin * 2;
 
-    // Add additional pages if needed
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+    // Calculate pixel-per-mm using canvas width (px) <-> content width (mm)
+  const pxPerMm = canvas.width / contentWidthMm;
+  const pageHeightPx = Math.floor(pageHeight * pxPerMm);
+
+    // Number of pages needed
+    const totalHeightPx = canvas.height;
+    let renderedHeight = 0;
+    let pageIndex = 0;
+
+    while (renderedHeight < totalHeightPx) {
+      // Slice a portion of the canvas for this page
+      const sliceHeightPx = Math.min(pageHeightPx, totalHeightPx - renderedHeight);
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sliceHeightPx;
+
+      const ctx = pageCanvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(
+          canvas,
+          0,
+          renderedHeight,
+          canvas.width,
+          sliceHeightPx,
+          0,
+          0,
+          pageCanvas.width,
+          pageCanvas.height
+        );
+      }
+
+      // Use toDataURL with higher quality JPEG compression for better output
+      const imgData = pageCanvas.toDataURL('image/jpeg', 0.95); // Increased to 95% quality for better resolution
+
+      if (pageIndex > 0) pdf.addPage();
+      // Calculate slice height in mm and add image with correct height to preserve quality
+      const sliceHeightMm = Math.round((sliceHeightPx / pxPerMm) * 100) / 100; // two decimals
+      pdf.addImage(imgData, 'JPEG', pdfMargin, pdfMargin, contentWidthMm, sliceHeightMm);
+
+      renderedHeight += sliceHeightPx;
+      pageIndex += 1;
     }
 
     // Generate filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `ACP-Registration-${formData.acpName.replace(/[^a-zA-Z0-9]/g, '-')}-${timestamp}.pdf`;
+  const filename = `ACP-Registration-${(upper.acpName || 'N/A').replace(/[^a-zA-Z0-9]/g, '-')}-${timestamp}.pdf`;
 
     console.log('PDF created successfully, generating blob...');
 
@@ -302,23 +410,47 @@ export const uploadPDFToStorage = async (blob: Blob, filename: string): Promise<
     formData.append('bucket', 'asus-pvp-master-media');
     formData.append('folder', 'asus-acp-registration-pdf-form-submission');
 
+    // Add timeout and abort controller with better error handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 60000); // Increased to 60 seconds for large files
+
     const response = await fetch('/api/upload-pdf', {
       method: 'POST',
       body: formData,
+      signal: controller.signal,
     });
 
-    const result = await response.json();
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
-      throw new Error(result.error || 'Failed to upload PDF');
+      const result = await response.json().catch(() => ({ error: 'Unknown server error' }));
+      throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
     }
-
+    
+    const result = await response.json();
     return result;
   } catch (error) {
     console.error('Upload PDF error:', error);
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        return {
+          success: false,
+          error: 'Upload timed out. File might be too large. Please try again or use a smaller image.'
+        };
+      }
+      
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+    
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: 'Unknown error occurred during upload'
     };
   }
 };
