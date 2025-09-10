@@ -797,7 +797,8 @@ export default function ACPRegistration() {
                       { value: 'South Sumatera', label: 'South Sumatera' },
                       { value: 'Kalimantan', label: 'Kalimantan' },
                       { value: 'Sulawesi', label: 'Sulawesi' },
-                      { value: 'Bali Nusra', label: 'Bali Nusra' }
+                      { value: 'Bali Nusra', label: 'Bali Nusra' },
+                      { value: 'Papua', label: 'Papua' }
                     ]}
                     placeholder="Pilih Provinsi"
                     required
